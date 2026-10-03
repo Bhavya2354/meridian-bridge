@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "meridian-bridge": {
+      "command": "python",
+      "args": ["-m", "meridian_bridge.mcp_server"],
+      "env": {
+        "FRESHDESK_DOMAIN": "acme",
+        "FRESHDESK_AUTH_MODE": "api_key",
+        "FRESHDESK_API_KEY": "${FRESHDESK_API_KEY}",
+        "MERIDIAN_REQUESTS_PER_MINUTE": "50",
+        "MERIDIAN_REDACT_PII": "true",
+        "MERIDIAN_ALLOW_WRITES": "false"
+      }
+    }
+  }
+}

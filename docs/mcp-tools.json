@@ -1,0 +1,397 @@
+{
+  "name": "meridian-bridge",
+  "version": "1.0.0",
+  "protocol": "mcp",
+  "transport": [
+    "stdio",
+    "sse",
+    "streamable-http"
+  ],
+  "instructions": "Read-only access to a Freshdesk helpdesk.\n\nUse `queue_snapshot` first to understand the shape of the queue, `search_tickets` to\nnarrow by status/priority/tag/date, and `get_ticket` to read one ticket with its\nconversation thread. Every response carries `diagnostics` with request counts and the\nremaining Freshdesk quota; stop issuing calls if `remaining` approaches zero.\n\nCustomer emails and phone numbers are masked before they reach the model. Ticket\nmutations are unavailable unless the deployment explicitly enables them.",
+  "tools": [
+    {
+      "name": "health_check",
+      "description": "Verify credentials and report the connector's effective configuration.",
+      "inputSchema": {
+        "properties": {},
+        "title": "health_checkArguments",
+        "type": "object"
+      },
+      "annotations": {
+        "read_only_hint": true,
+        "open_world_hint": true
+      }
+    },
+    {
+      "name": "list_tickets",
+      "description": "List helpdesk tickets, newest activity first. Status/priority filters route through search.",
+      "inputSchema": {
+        "properties": {
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "open, pending, resolved, closed, waiting_on_customer, waiting_on_third_party",
+            "title": "Status"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "low, medium, high, urgent",
+            "title": "Priority"
+          },
+          "requester_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Exact requester email to filter by",
+            "title": "Requester Email"
+          },
+          "updated_since": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "ISO-8601 timestamp; only tickets updated after it",
+            "title": "Updated Since"
+          },
+          "order_by": {
+            "default": "updated_at",
+            "description": "created_at, updated_at, due_by or status",
+            "title": "Order By",
+            "type": "string"
+          },
+          "order_type": {
+            "default": "desc",
+            "description": "asc or desc",
+            "title": "Order Type",
+            "type": "string"
+          },
+          "limit": {
+            "default": 25,
+            "description": "Maximum tickets to return",
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "include_description": {
+            "default": false,
+            "description": "Include the sanitized first message body",
+            "title": "Include Description",
+            "type": "boolean"
+          }
+        },
+        "title": "list_ticketsArguments",
+        "type": "object"
+      },
+      "annotations": {
+        "read_only_hint": true,
+        "open_world_hint": true
+      }
+    },
+    {
+      "name": "get_ticket",
+      "description": "Read one ticket in full: fields, SLA state, requester and conversation thread.",
+      "inputSchema": {
+        "properties": {
+          "ticket_id": {
+            "description": "Freshdesk ticket id",
+            "minimum": 1,
+            "title": "Ticket Id",
+            "type": "integer"
+          },
+          "include_conversations": {
+            "default": true,
+            "description": "Attach the message thread",
+            "title": "Include Conversations",
+            "type": "boolean"
+          },
+          "conversation_limit": {
+            "default": 10,
+            "description": "Maximum thread entries",
+            "maximum": 50,
+            "minimum": 0,
+            "title": "Conversation Limit",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ticket_id"
+        ],
+        "title": "get_ticketArguments",
+        "type": "object"
+      },
+      "annotations": {
+        "read_only_hint": true,
+        "open_world_hint": true
+      }
+    },
+    {
+      "name": "search_tickets",
+      "description": "Search tickets by structured filters, optionally narrowed by a keyword. Needs at least one filter.",
+      "inputSchema": {
+        "properties": {
+          "status": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "One or more status labels, OR-ed together",
+            "title": "Status"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "One or more priority labels, OR-ed together",
+            "title": "Priority"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Freshdesk tags, OR-ed together",
+            "title": "Tags"
+          },
+          "ticket_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Ticket type, e.g. Question or Incident",
+            "title": "Ticket Type"
+          },
+          "agent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Assigned agent id",
+            "title": "Agent Id"
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Helpdesk group id",
+            "title": "Group Id"
+          },
+          "created_after": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "ISO date or timestamp",
+            "title": "Created After"
+          },
+          "created_before": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "ISO date or timestamp",
+            "title": "Created Before"
+          },
+          "updated_after": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "ISO date or timestamp",
+            "title": "Updated After"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Keyword matched client-side against subject and description",
+            "title": "Text"
+          },
+          "limit": {
+            "default": 25,
+            "description": "Maximum tickets to return",
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "include_description": {
+            "default": false,
+            "description": "Include sanitized ticket bodies",
+            "title": "Include Description",
+            "type": "boolean"
+          }
+        },
+        "title": "search_ticketsArguments",
+        "type": "object"
+      },
+      "annotations": {
+        "read_only_hint": true,
+        "open_world_hint": true
+      }
+    },
+    {
+      "name": "queue_snapshot",
+      "description": "Aggregate the unresolved queue: counts by status and priority, SLA breaches, oldest tickets.",
+      "inputSchema": {
+        "properties": {
+          "window_hours": {
+            "default": 24,
+            "description": "Look-back window in hours",
+            "maximum": 720,
+            "minimum": 1,
+            "title": "Window Hours",
+            "type": "integer"
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Restrict to one helpdesk group",
+            "title": "Group Id"
+          }
+        },
+        "title": "queue_snapshotArguments",
+        "type": "object"
+      },
+      "annotations": {
+        "read_only_hint": true,
+        "open_world_hint": true
+      }
+    },
+    {
+      "name": "add_private_note",
+      "description": "Append an internal note visible only to agents. Disabled unless writes are enabled.",
+      "inputSchema": {
+        "properties": {
+          "ticket_id": {
+            "description": "Freshdesk ticket id",
+            "minimum": 1,
+            "title": "Ticket Id",
+            "type": "integer"
+          },
+          "body": {
+            "description": "Internal note text",
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticket_id",
+          "body"
+        ],
+        "title": "add_private_noteArguments",
+        "type": "object"
+      },
+      "annotations": {
+        "read_only_hint": false,
+        "destructive_hint": false,
+        "idempotent_hint": false,
+        "open_world_hint": true
+      }
+    }
+  ],
+  "resources": [
+    {
+      "uriTemplate": "freshdesk://ticket/{ticket_id}",
+      "name": "ticket_resource",
+      "description": "Ticket detail addressable as an MCP resource."
+    }
+  ]
+}
